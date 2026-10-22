@@ -866,14 +866,16 @@ def clear_cart():
     try:
         cart_id = _get_or_create_cart(cursor, conn, user_id)
 
-        # Fetch all items to restore stock to inventory table
-        cursor.execute("SELECT variant_id, quantity FROM cart_items WHERE cart_id = %s", (cart_id,))
-        items = cursor.fetchall()
-        for item in items:
-            cursor.execute(
-                "UPDATE inventory SET stock_quantity = stock_quantity + %s WHERE variant_id = %s",
-                (item['quantity'], item['variant_id'])
-            )
+        # Restore stock to inventory table in a single query
+        cursor.execute(
+            """
+            UPDATE inventory i
+            JOIN cart_items c ON i.variant_id = c.variant_id
+            SET i.stock_quantity = i.stock_quantity + c.quantity
+            WHERE c.cart_id = %s
+            """,
+            (cart_id,)
+        )
 
         cursor.execute("DELETE FROM cart_items WHERE cart_id = %s", (cart_id,))
         conn.commit()
