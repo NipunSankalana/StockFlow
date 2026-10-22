@@ -823,12 +823,13 @@ def update_order_status(order_id):
             """, (order_id,))
             items = cursor.fetchall()
 
-            for item in items:
-                cursor.execute("""
+            if items:
+                items_data = [(item['quantity'], item['variant_id']) for item in items]
+                cursor.executemany("""
                     UPDATE inventory 
                     SET stock_quantity = stock_quantity + %s 
                     WHERE variant_id = %s
-                """, (item['quantity'], item['variant_id']))
+                """, items_data)
 
             # Release the payment: collected funds are refunded; an uncollected (COD) charge is voided.
             # shipments.shipping_status has no cancelled value, so logistics filters on orders.status instead.
